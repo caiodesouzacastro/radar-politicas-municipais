@@ -1,0 +1,25 @@
+# Cache bruto da API — não comitar (regenerável, ocupa muito espaço)
+data/raw/pncp_cache/
+data/raw/transferegov_cache/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Editores
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Outputs locais que não fazem sentido versionar
+*.log
+/tmp_*

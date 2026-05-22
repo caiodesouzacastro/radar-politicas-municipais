@@ -1,0 +1,30 @@
+codigo_ibge,municipio,uf,eixo_id,n_contratos,valor_total,subeixos_atingidos,nivel_documentacao,rotulo_nivel
+1301951,Itamarati,AM,busca_ativa_escolar,1,10569313.02,programas_permanencia,1,registro_isolado
+1505031,Novo Progresso,PA,seguranca_alimentar,1,53210.0,alimentacao_escolar,1,registro_isolado
+1505502,Paragominas,PA,busca_ativa_escolar,1,14400.0,programas_permanencia,1,registro_isolado
+2109601,Rosário,MA,busca_ativa_escolar,1,30000.0,transporte_escolar,1,registro_isolado
+2305407,Icó,CE,primeira_infancia,1,3750.0,creche_pre_escola,1,registro_isolado
+2311264,Quiterianópolis,CE,busca_ativa_escolar,1,4477223.7,transporte_escolar,1,registro_isolado
+2512721,Pedro Régis,PB,seguranca_alimentar,1,475556.7,alimentacao_escolar,1,registro_isolado
+2601706,Belo Jardim,PE,primeira_infancia,1,1314630.0,creche_pre_escola,1,registro_isolado
+2900702,Alagoinhas,BA,primeira_infancia,1,5600000.0,creche_pre_escola,1,registro_isolado
+2918001,Jequié,BA,seguranca_alimentar,1,4492670.0,agricultura_familiar;alimentacao_escolar,1,registro_isolado
+2922409,Mutuípe,BA,saude_mental,1,39000.0,caps,1,registro_isolado
+2925501,Prado,BA,primeira_infancia,1,31425.0,creche_pre_escola,1,registro_isolado
+3148103,Patrocínio,MG,primeira_infancia,18,444642.01,creche_pre_escola,3,atividade_substancial
+3152006,Pompéu,MG,seguranca_alimentar,4,1136361.2000000002,alimentacao_escolar,2,registros_recorrentes
+3200300,Alfredo Chaves,ES,busca_ativa_escolar,1,1638784.49,transporte_escolar,1,registro_isolado
+3200805,Baixo Guandu,ES,busca_ativa_escolar,1,236000.0,transporte_escolar,1,registro_isolado
+3503208,Araraquara,SP,seguranca_alimentar,3,68903.64,agricultura_familiar,2,registros_recorrentes
+3503604,Areiópolis,SP,seguranca_alimentar,8,24241.07,alimentacao_escolar,2,registros_recorrentes
+3507753,Brejo Alegre,SP,primeira_infancia,1,428.64,creche_pre_escola,1,registro_isolado
+3515509,Fernandópolis,SP,seguranca_alimentar,1,80470.0,alimentacao_escolar,1,registro_isolado
+3526704,Leme,SP,primeira_infancia,1,1350.0,creche_pre_escola,1,registro_isolado
+3527108,Lins,SP,seguranca_alimentar,1,5519671.16,agricultura_familiar;alimentacao_escolar,1,registro_isolado
+3555000,Tupã,SP,busca_ativa_escolar,1,14994.0,programas_permanencia,1,registro_isolado
+3555000,Tupã,SP,primeira_infancia,1,14994.0,creche_pre_escola,1,registro_isolado
+3555000,Tupã,SP,seguranca_alimentar,1,14994.0,alimentacao_escolar,1,registro_isolado
+4125704,São Miguel do Iguaçu,PR,saude_mental,1,117530.0,raps_geral,1,registro_isolado
+4206405,Guaraciaba,SC,seguranca_alimentar,6,85168.5,agricultura_familiar;alimentacao_escolar,2,registros_recorrentes
+5204805,Campo Alegre de Goiás,GO,seguranca_alimentar,2,4695.64,alimentacao_escolar,1,registro_isolado
+5217203,Piranhas,GO,busca_ativa_escolar,1,12500.0,programas_permanencia,1,registro_isolado

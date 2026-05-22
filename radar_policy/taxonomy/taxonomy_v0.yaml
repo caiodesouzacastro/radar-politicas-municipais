@@ -1,0 +1,224 @@
+# Taxonomia de Políticas Municipais — v0.2
+#
+# Mudanças desde v0.1 (baseadas em validação qualitativa em 2.700 contratos
+# do PNCP em 15/09/2025):
+#
+# 1. Removido "cei" como substring solta — pegava "Conceição", "Ceirárias-ME"
+#    e similar. Mantido apenas como termo composto "cei municipal".
+# 2. Adicionado exclude "expediente" + "papelaria" para saúde mental — vários
+#    contratos listam "saúde mental" como uma de várias secretarias atendidas
+#    por compra genérica de papelaria.
+# 3. Restringido "generos alimenticios" para versões que mencionem escola/PNAE;
+#    gêneros pra "Casa do Idoso" ou "Secretaria de Obras" não é alimentação
+#    escolar (mas é segurança alimentar latissimo sensu — fica pra v0.3).
+# 4. Reduzido peso de "saude mental" em contexto de papelaria/expediente.
+
+version: "0.2.0"
+data_referencia: "2026-05-22"
+
+eixos:
+
+  primeira_infancia:
+    nome: "Primeira Infância"
+    descricao: >
+      Políticas voltadas à criança de 0 a 6 anos, com foco em creche/pré-escola,
+      visitação domiciliar (Criança Feliz/PCF), atenção pré-natal e neonatal,
+      busca ativa vacinal infantil e ações intersetoriais do Marco Legal da
+      Primeira Infância (Lei 13.257/2016).
+    marco_legal:
+      - "Lei 13.257/2016 (Marco Legal da Primeira Infância)"
+      - "Lei 9.394/1996 (LDB) — Educação Infantil"
+      - "Lei 8.069/1990 (ECA)"
+    sistemas_setoriais:
+      - "SIOPE (educação infantil)"
+      - "Censo Escolar (matrículas creche/pré-escola)"
+      - "e-PCF (Programa Criança Feliz)"
+      - "SISVAN (vigilância nutricional infantil)"
+    subeixos:
+      creche_pre_escola:
+        nome: "Creche e Pré-escola"
+        keywords_include:
+          - "creche"
+          - "creches"
+          - "pre-escola"
+          - "pre escola"
+          - "pre escolas"
+          - "educacao infantil"
+          - "centro de educacao infantil"
+          - "cmei"
+          - "bercario"
+        keywords_exclude:
+          - "ensino fundamental"
+          - "ensino medio"
+          - "universidade"
+          - "pos graduacao"
+      visitacao_domiciliar:
+        nome: "Visitação Domiciliar / Criança Feliz"
+        keywords_include:
+          - "crianca feliz"
+          - "primeira infancia no suas"
+          - "programa crianca feliz"
+          - "visitador domiciliar"
+          - "visitacao domiciliar"
+        keywords_exclude: []
+      pre_natal_neonatal:
+        nome: "Pré-natal e Neonatal"
+        keywords_include:
+          - "pre natal"
+          - "prenatal"
+          - "pre-natal"
+          - "gestante"
+          - "puerpera"
+          - "neonatal"
+          - "rede cegonha"
+          - "rede alyne"
+        keywords_exclude:
+          - "veterinaria"
+          - "animal"
+      busca_ativa_vacinal:
+        nome: "Busca Ativa Vacinal Infantil"
+        keywords_include:
+          - "vacinacao infantil"
+          - "imunizacao infantil"
+          - "busca ativa vacinal"
+        keywords_exclude:
+          - "veterinaria"
+          - "animal"
+
+  busca_ativa_escolar:
+    nome: "Busca Ativa Escolar e Permanência"
+    descricao: >
+      Políticas de busca ativa de crianças e adolescentes fora da escola,
+      prevenção da evasão e programas de permanência (bolsas, transporte,
+      alimentação escolar como contrapartida de frequência).
+    marco_legal:
+      - "Lei 9.394/1996 (LDB) — obrigatoriedade dos 4 aos 17 anos"
+      - "Decreto 9.465/2018 (Política Nacional de Alfabetização)"
+      - "Lei 14.113/2020 (FUNDEB)"
+    sistemas_setoriais:
+      - "Censo Escolar"
+      - "Plataforma Busca Ativa Escolar (UNICEF)"
+      - "Frequência Escolar / Bolsa Família"
+    subeixos:
+      busca_ativa:
+        nome: "Busca Ativa Escolar"
+        keywords_include:
+          - "busca ativa escolar"
+          - "busca ativa de aluno"
+          - "evasao escolar"
+          - "abandono escolar"
+          - "fora da escola"
+        keywords_exclude: []
+      transporte_escolar:
+        nome: "Transporte Escolar"
+        keywords_include:
+          - "transporte escolar"
+          - "pnate"
+          - "caminho da escola"
+        keywords_exclude: []
+      programas_permanencia:
+        nome: "Programas de Permanência e Reforço"
+        keywords_include:
+          - "reforco escolar"
+          - "contraturno"
+          - "tempo integral"
+          - "mais educacao"
+          - "pe-de-meia"
+          - "pe de meia"
+        keywords_exclude: []
+
+  seguranca_alimentar:
+    nome: "Segurança Alimentar e Nutricional"
+    descricao: >
+      Equipamentos públicos de SAN (restaurantes populares, cozinhas comunitárias,
+      bancos de alimentos), aquisição de alimentos da agricultura familiar (PAA),
+      alimentação escolar (PNAE) e ações de combate à insegurança alimentar.
+    marco_legal:
+      - "Lei 11.346/2006 (LOSAN)"
+      - "Lei 11.947/2009 (PNAE)"
+      - "Lei 14.628/2023 (Bolsa Família e SAN)"
+    sistemas_setoriais:
+      - "SISAN / CAISAN municipal"
+      - "PNAE / FNDE"
+      - "PAA (Conab e municipal)"
+    subeixos:
+      equipamentos_san:
+        nome: "Equipamentos Públicos de SAN"
+        keywords_include:
+          - "restaurante popular"
+          - "cozinha comunitaria"
+          - "cozinha solidaria"
+          - "banco de alimentos"
+        keywords_exclude: []
+      alimentacao_escolar:
+        nome: "Alimentação Escolar (PNAE)"
+        keywords_include:
+          - "alimentacao escolar"
+          - "merenda escolar"
+          - "merenda"
+          - "pnae"
+          - "alimentacao da rede municipal de ensino"
+          - "alimentacao dos alunos"
+        keywords_exclude:
+          - "uniforme"
+          - "material escolar"
+      agricultura_familiar:
+        nome: "Aquisição da Agricultura Familiar (PAA)"
+        keywords_include:
+          - "agricultura familiar"
+          - "programa de aquisicao de alimentos"
+          - "dap familiar"
+        keywords_exclude: []
+
+  saude_mental:
+    nome: "Saúde Mental"
+    descricao: >
+      Rede de Atenção Psicossocial (RAPS) municipal: CAPS, residências
+      terapêuticas, unidades de acolhimento, ações de prevenção ao suicídio
+      e cuidado em álcool e outras drogas.
+    marco_legal:
+      - "Lei 10.216/2001 (Reforma Psiquiátrica)"
+      - "Portaria GM/MS 3.088/2011 (RAPS)"
+    sistemas_setoriais:
+      - "CNES (estabelecimentos)"
+      - "SIA/SUS (procedimentos ambulatoriais)"
+      - "RAAS (Registro de Ações Ambulatoriais de Saúde)"
+    subeixos:
+      caps:
+        nome: "CAPS (Centros de Atenção Psicossocial)"
+        keywords_include:
+          - "caps"
+          - "centro de atencao psicossocial"
+          - "centros de atencao psicossocial"
+        keywords_exclude:
+          - "expediente"
+          - "papelaria"
+          - "material de escritorio"
+      raps_geral:
+        nome: "Rede de Atenção Psicossocial (geral)"
+        keywords_include:
+          - "saude mental"
+          - "raps"
+          - "rede de atencao psicossocial"
+          - "residencia terapeutica"
+          - "unidade de acolhimento"
+        keywords_exclude:
+          - "expediente"
+          - "papelaria"
+          - "demais setores"
+          - "material de escritorio"
+      alcool_drogas:
+        nome: "Álcool e Outras Drogas"
+        keywords_include:
+          - "alcool e outras drogas"
+          - "alcool e drogas"
+          - "comunidade terapeutica"
+          - "caps ad"
+        keywords_exclude: []
+      prevencao_suicidio:
+        nome: "Prevenção ao Suicídio"
+        keywords_include:
+          - "prevencao ao suicidio"
+          - "prevencao do suicidio"
+          - "setembro amarelo"
+        keywords_exclude: []
