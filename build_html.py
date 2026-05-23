@@ -121,15 +121,25 @@ SUBEIXOS_LABELS = {
 # ---------------------------------------------------------------------------
 # 3) Métricas e agregações
 # ---------------------------------------------------------------------------
-n_contratos = int(contratos["numero_controle_pncp"].nunique())
+n_contratos = int(contratos["registro_id"].nunique())
 n_municipios = int(contratos["codigo_ibge"].nunique())
 n_ufs = int(contratos["uf"].nunique())
 valor_total = float(contratos["valor_global"].sum())
 
+# Fontes presentes
+if "fonte" in contratos.columns:
+    fontes_lista = sorted(contratos["fonte"].dropna().unique().tolist())
+    n_fontes = len(fontes_lista)
+    fontes_distribuicao = contratos.groupby("fonte")["registro_id"].nunique().to_dict()
+else:
+    fontes_lista = ["PNCP"]
+    n_fontes = 1
+    fontes_distribuicao = {"PNCP": n_contratos}
+
 dist = (
     contratos.groupby("eixo_id")
     .agg(
-        n_contratos=("numero_controle_pncp", "nunique"),
+        n_contratos=("registro_id", "nunique"),
         n_municipios=("codigo_ibge", "nunique"),
         valor_total=("valor_global", "sum"),
     )
@@ -137,7 +147,15 @@ dist = (
 )
 
 # Cobertura temporal (range de datas observadas)
-datas_assinatura = pd.to_datetime(contratos["data_assinatura"], errors="coerce")
+# As fontes têm formatos diferentes:
+#   - PNCP: 'YYYY-MM-DD' (ISO)
+#   - Transferegov: 'DD/MM/YYYY'
+#   - SICONFI: 'YYYY-12-31' (a gente preenche assim)
+# pd.to_datetime com format='mixed' resolve as 3 sem warnings.
+def parse_data_mista(s):
+    return pd.to_datetime(s, format="mixed", dayfirst=True, errors="coerce")
+
+datas_assinatura = parse_data_mista(contratos["data_referencia"])
 data_min = datas_assinatura.min()
 data_max = datas_assinatura.max()
 n_dias_observados = (datas_assinatura.dropna().dt.normalize().nunique() or 0)
@@ -147,10 +165,10 @@ timeline_disponivel = n_dias_observados >= 30
 timeline_data = []
 if timeline_disponivel:
     df_t = contratos.copy()
-    df_t["data_assinatura"] = pd.to_datetime(df_t["data_assinatura"], errors="coerce")
-    df_t = df_t.dropna(subset=["data_assinatura"])
-    df_t["ym"] = df_t["data_assinatura"].dt.to_period("M").astype(str)
-    tl = df_t.groupby(["ym", "eixo_id"])["numero_controle_pncp"].nunique().reset_index()
+    df_t["data_referencia"] = parse_data_mista(df_t["data_referencia"])
+    df_t = df_t.dropna(subset=["data_referencia"])
+    df_t["ym"] = df_t["data_referencia"].dt.to_period("M").astype(str)
+    tl = df_t.groupby(["ym", "eixo_id"])["registro_id"].nunique().reset_index()
     timeline_data = tl.to_dict(orient="records")
 
 # ---------------------------------------------------------------------------
@@ -217,7 +235,7 @@ if not agg.empty:
 # Estatística de cobertura de geocoding (transparência sobre quem ficou de fora)
 n_munis_base = agg["codigo_ibge"].nunique() if not agg.empty else 0
 n_munis_no_mapa = len(pontos_mapa)
-geocoding_perdidos = n_munis_base - n_munis_no_mapa
+geocoding_perdidos = max(0, n_munis_base - n_munis_no_mapa)
 
 # Mapa só "ativa" plenamente se temos GEO carregado E pelo menos 1 município geocodificado
 mapa_disponivel = GEO_DISPONIVEL and n_munis_no_mapa > 0
@@ -916,9 +934,11 @@ __LEAFLET_CSS_TAG__
   <h1>Radar de Políticas Municipais</h1>
   <p class="lead">
     Camada de agregação e classificação de registros administrativos públicos
-    por agenda de política pública municipal. Reúne contratações públicas
-    do PNCP — e, em fases futuras, transferências federais e sistemas
-    setoriais — sob uma taxonomia versionada de quatro agendas.
+    por agenda de política pública municipal. Reúne contratações do PNCP,
+    propostas de convênios federais (Transferegov) e despesas orçamentárias
+    consolidadas (SICONFI/Tesouro) sob uma taxonomia versionada de quatro
+    agendas — permitindo ver o ciclo completo: <em>anunciado → aprovado →
+    contratado → executado</em>.
   </p>
   <div class="hero-meta">
     <span><strong>Cobertura:</strong> __DATA_PRIMEIRO__ a __DATA_ULTIMO__</span>
@@ -965,6 +985,14 @@ __LEAFLET_CSS_TAG__
       <div class="metric-value">__VALOR_TOTAL__</div>
       <div class="metric-sub">soma dos contratos classificados</div>
     </div>
+    <div class="metric">
+      <div class="metric-label">Fontes ativas</div>
+      <div class="metric-value">__N_FONTES__</div>
+      <div class="metric-sub">__FONTES_LISTA__</div>
+    </div>
+  </div>
+  <div class="map-coverage-badge" style="margin-top:8px">
+    <strong>Distribuição por fonte:</strong> <span id="dist-fontes">—</span>
   </div>
 </section>
 
@@ -1119,6 +1147,9 @@ __LEAFLET_CSS_TAG__
     versão da taxonomia e são insumo para refinamentos futuros.
   </p>
   <div class="controls">
+    <label>Fonte:
+      <select id="contrato-fonte"><option value="">Todas</option></select>
+    </label>
     <label>Eixo:
       <select id="contrato-eixo"><option value="">Todos</option></select>
     </label>
@@ -1173,21 +1204,34 @@ __LEAFLET_CSS_TAG__
       </p>
     </div>
     <div class="meto-card">
-      <h4>Fonte atual</h4>
+      <h4>Fontes ativas</h4>
       <p>
         <strong>PNCP</strong> (Portal Nacional de Contratações Públicas):
-        contratos publicados desde 2021, filtrados por esfera municipal.
-        Não cobre transferências, despesas correntes, nem políticas sem
-        contratação formal.
+        contratos públicos formalizados desde 2021, esfera municipal.<br>
+        <strong>Transferegov / SICONV</strong>: propostas e convênios
+        federais discricionários, estágios desde "proposta enviada" até
+        "convênio aprovado/rejeitado".<br>
+        <strong>SICONFI / Tesouro Nacional</strong>: despesas executadas
+        por subfunção orçamentária (RREO Anexo 02), via API oficial.
+      </p>
+    </div>
+    <div class="meto-card">
+      <h4>Estágios mapeados</h4>
+      <p>
+        <strong>Anunciado</strong> (Transferegov: proposta enviada/em análise) →
+        <strong>Aprovado</strong> (Transferegov: proposta aprovada, antes da contratação) →
+        <strong>Contratado</strong> (PNCP: contrato assinado) →
+        <strong>Executado</strong> (SICONFI: despesa empenhada). Um mesmo município
+        pode aparecer em vários estágios — sinal de política madura.
       </p>
     </div>
     <div class="meto-card">
       <h4>Fontes previstas</h4>
       <p>
-        <strong>Transferegov</strong> (convênios federais, fase 2);
-        <strong>SIOPS/SIOPE/Censo SUAS</strong> (sistemas setoriais,
-        fase 2); <strong>diários oficiais municipais</strong> (fase 3, com
-        classificação assistida por LLM).
+        <strong>Censo SUAS / RMA</strong> (CRAS/CREAS, fase 2, download manual);
+        <strong>SIOPE direto</strong> (FNDE, fase 2);
+        <strong>diários oficiais municipais</strong> (fase 3, com classificação
+        assistida por LLM).
       </p>
     </div>
   </div>
@@ -1199,8 +1243,13 @@ __LEAFLET_CSS_TAG__
     <li>Falsos positivos sutis (ex: contratos de insumo genérico para escolas
         de educação infantil contabilizados em primeira infância).</li>
     <li>Cobertura temporal limitada à janela coletada — não é tempo real.</li>
-    <li>Apenas pegada via PNCP nesta versão; políticas municipais que não
-        passam por contratação direta são invisíveis aqui.</li>
+    <li><strong>Saúde mental no SICONFI:</strong> a Portaria MOG 42/1999 não tem
+        subfunção própria — fica agregada em "Atenção Básica" ou "Assistência
+        Hospitalar". Por isso o eixo Saúde Mental hoje depende quase só de
+        PNCP/Transferegov.</li>
+    <li>Transferegov inclui propostas <em>rejeitadas</em>: o classificador
+        pega o objeto, e o estágio é mostrado como rejeitado — mas o
+        registro existe na contagem total. Filtre por estágio se relevante.</li>
   </ul>
 
   <h3>Próximos passos</h3>
@@ -1256,6 +1305,7 @@ const EIXOS = __EIXOS_META_JSON__;
 const SUBEIXOS_LABELS = __SUBEIXOS_LABELS_JSON__;
 const TIMELINE_DATA = __TIMELINE_JSON__;
 const TIMELINE_DISPONIVEL = __TIMELINE_DISPONIVEL__;
+const FONTES_DISTRIBUICAO = __FONTES_DISTRIBUICAO__;
 const PONTOS_MAPA = __PONTOS_MAPA_JSON__;
 const CHOROPLETH_UF = __CHOROPLETH_UF_JSON__;
 const UFS_GEOJSON = __UFS_GEOJSON__;
@@ -1333,6 +1383,10 @@ function popularSelects() {
   const ufs_c = [...new Set(CONTRATOS.map(d => d.uf).filter(Boolean))].sort();
   ufs_agg.forEach(uf => document.getElementById("filtro-uf").innerHTML += `<option value="${uf}">${uf}</option>`);
   ufs_c.forEach(uf => document.getElementById("contrato-uf").innerHTML += `<option value="${uf}">${uf}</option>`);
+  // Popular filtro de fonte (se existir)
+  const fontes = [...new Set(CONTRATOS.map(d => d.fonte).filter(Boolean))].sort();
+  const seF = document.getElementById("contrato-fonte");
+  if (seF) fontes.forEach(f => seF.innerHTML += `<option value="${f}">${f}</option>`);
 }
 
 function renderMunicipios() {
@@ -1367,9 +1421,12 @@ function renderMunicipios() {
 function renderContratos() {
   const eixo = document.getElementById("contrato-eixo").value;
   const uf = document.getElementById("contrato-uf").value;
+  const seF = document.getElementById("contrato-fonte");
+  const fonte = seF ? seF.value : "";
   let rows = CONTRATOS.slice();
   if (eixo) rows = rows.filter(r => r.eixo_id === eixo);
   if (uf) rows = rows.filter(r => r.uf === uf);
+  if (fonte) rows = rows.filter(r => (r.fonte || "PNCP") === fonte);
   rows.sort((a, b) => (b.valor_global || 0) - (a.valor_global || 0));
   // limite pra não estourar o DOM
   const LIMIT = 200;
@@ -1377,23 +1434,30 @@ function renderContratos() {
   rows = rows.slice(0, LIMIT);
   const box = document.getElementById("lista-contratos");
   if (!rows.length) { box.innerHTML = '<p class="muted">Nenhum contrato com esses filtros.</p>'; return; }
-  let html = rows.map(r => `
+  let html = rows.map(r => {
+    const fonte = r.fonte || 'PNCP';
+    const fonteBadgeColor = fonte === 'PNCP' ? '#1c79be' : fonte === 'Transferegov' ? '#a1c62e' : '#7a8a9c';
+    const estagioBadge = r.estagio ? `<span class="badge" style="background:#e8eef4;color:#1a3a5c;">${r.estagio}</span>` : '';
+    return `
     <details>
       <summary>
         <strong>${r.municipio || "—"}/${r.uf || "—"}</strong> ·
+        <span class="badge" style="background:${fonteBadgeColor};color:#fff;">${fonte}</span>
+        ${estagioBadge}
         ${eixoNome(r.eixo_id)} · <span class="muted">${subeixoNome(r.subeixo_id)}</span> ·
         <span class="muted">R$ ${fmtBR(r.valor_global)}</span>
       </summary>
       <div class="detail-body">
         <div><strong>Órgão:</strong> ${r.orgao_razao_social || "—"}</div>
-        <div><strong>Data assinatura:</strong> ${r.data_assinatura || "—"} ·
-             <strong>PNCP:</strong> <code>${r.numero_controle_pncp || "—"}</code></div>
+        <div><strong>Data:</strong> ${r.data_referencia || "—"} ·
+             <strong>ID:</strong> <code>${r.registro_id || "—"}</code></div>
         <div style="margin-top:8px"><strong>Palavras-chave acertadas:</strong> ${
           (r.keywords_hit || "").split(";").filter(Boolean).map(k => `<span class="badge">${k}</span>`).join(" ") || '<span class="muted">—</span>'
         }</div>
         <div class="obj-text">${(r.objeto || "(sem texto de objeto)").trim()}</div>
       </div>
-    </details>`).join("");
+    </details>`;
+  }).join("");
   if (trunc) html += `<p class="muted small" style="text-align:center;margin-top:14px">Mostrando primeiros ${LIMIT} contratos por valor. Use os filtros para refinar.</p>`;
   box.innerHTML = html;
 }
@@ -1418,7 +1482,7 @@ function renderTimeline() {
   const byMonthEixo = {};
   months.forEach(m => byMonthEixo[m] = {});
   TIMELINE_DATA.forEach(d => {
-    byMonthEixo[d.ym][d.eixo_id] = d.numero_controle_pncp;
+    byMonthEixo[d.ym][d.eixo_id] = d.registro_id;
   });
 
   // Dimensões SVG
@@ -1880,6 +1944,21 @@ function addLegendaEscala(maxVal, corBase, eixo) {
 // ===========================================================================
 // Init
 // ===========================================================================
+// Distribuição por fonte (badge sob métricas)
+function renderDistribuicaoFontes() {
+  const box = document.getElementById("dist-fontes");
+  if (!box) return;
+  const fontesCores = { PNCP: '#1c79be', Transferegov: '#a1c62e', SICONFI: '#04354a' };
+  const items = Object.entries(FONTES_DISTRIBUICAO)
+    .sort((a,b) => b[1] - a[1])
+    .map(([f, n]) => {
+      const cor = fontesCores[f] || '#7a8a9c';
+      return `<span class="badge" style="background:${cor};color:#fff;margin-right:6px;">${f}: ${fmtBR(n)}</span>`;
+    });
+  box.innerHTML = items.join(' ');
+}
+
+renderDistribuicaoFontes();
 renderEixos();
 popularSelects();
 renderMunicipios();
@@ -1888,8 +1967,8 @@ renderTimeline();
 initMap();
 ["filtro-eixo", "filtro-uf", "filtro-busca"].forEach(id =>
   document.getElementById(id).addEventListener("input", renderMunicipios));
-["contrato-eixo", "contrato-uf"].forEach(id =>
-  document.getElementById(id).addEventListener("input", renderContratos));
+["contrato-eixo", "contrato-uf", "contrato-fonte"].forEach(id =>
+  document.getElementById(id) && document.getElementById(id).addEventListener("input", renderContratos));
 </script>
 </body>
 </html>
@@ -1901,6 +1980,9 @@ initMap();
 html = HTML
 html = html.replace("__LOGO_SVG__", LOGO_SVG)
 html = html.replace("__N_CONTRATOS__", f"{n_contratos:,}".replace(",", "."))
+html = html.replace("__N_FONTES__", str(n_fontes))
+html = html.replace("__FONTES_LISTA__", " · ".join(fontes_lista))
+html = html.replace("__FONTES_DISTRIBUICAO__", json.dumps(fontes_distribuicao, ensure_ascii=False))
 html = html.replace("__N_MUNICIPIOS__", f"{n_municipios:,}".replace(",", "."))
 html = html.replace("__N_UFS__", str(n_ufs))
 html = html.replace("__VALOR_TOTAL__", f"{valor_total:,.0f}".replace(",", "."))
