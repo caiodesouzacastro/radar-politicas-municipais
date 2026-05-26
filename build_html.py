@@ -1970,6 +1970,62 @@ initMap();
 ["contrato-eixo", "contrato-uf", "contrato-fonte"].forEach(id =>
   document.getElementById(id) && document.getElementById(id).addEventListener("input", renderContratos));
 </script>
+
+<!-- ============================================================
+     Compactação de valores monetários grandes nos .metric-value
+     Pós-render, idempotente, não-destrutivo.
+     - Só atua em .metric-value cujo label irmão menciona R$ ou "valor"
+     - Só compacta valores >= 1.000.000
+     - Preserva o valor original em title (tooltip)
+     ============================================================ -->
+<script>
+(function () {
+  function fmtBRLCompact(n) {
+    var abs = Math.abs(n);
+    var opts = { maximumFractionDigits: 1, minimumFractionDigits: 1 };
+    if (abs >= 1e9) return "R$ " + (n / 1e9).toLocaleString("pt-BR", opts) + " bi";
+    if (abs >= 1e6) return "R$ " + (n / 1e6).toLocaleString("pt-BR", opts) + " mi";
+    return null; // abaixo do limiar: não toca
+  }
+
+  // pt-BR: "17.888.609.176" ou "R$ 17.888.609,17" → 17888609176 / 17888609.17
+  function parsePtBR(txt) {
+    var cleaned = (txt || "").replace(/[^\d,.\-]/g, "");
+    if (!cleaned) return null;
+    var normalized = cleaned.replace(/\./g, "").replace(",", ".");
+    var n = parseFloat(normalized);
+    return isNaN(n) ? null : n;
+  }
+
+  function isMonetary(el, txt) {
+    if (/R\$/.test(txt)) return true;
+    var card = el.closest(".metric") || el.parentElement;
+    var label = card && card.querySelector(".metric-label");
+    return !!(label && /r\$|valor/i.test(label.textContent));
+  }
+
+  function formatAll() {
+    document.querySelectorAll(".metric-value").forEach(function (el) {
+      if (el.dataset.fmt === "done") return;
+      var original = el.textContent.trim();
+      var n = parsePtBR(original);
+      if (n === null) return;
+      if (!isMonetary(el, original)) return;
+      var compact = fmtBRLCompact(n);
+      if (!compact) return; // < 1 milhão: deixa como está
+      el.textContent = compact;
+      el.title = original.indexOf("R$") === 0 ? original : "R$ " + original;
+      el.dataset.fmt = "done";
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", formatAll);
+  } else {
+    formatAll();
+  }
+})();
+</script>
 </body>
 </html>
 """
