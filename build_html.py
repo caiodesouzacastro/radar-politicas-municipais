@@ -788,6 +788,39 @@ HTML = """<!DOCTYPE html>
     color: var(--text-2);
   }
   .map-disclaimer strong { color: var(--azul-escuro); }
+
+  /* Abas de topo por eixo (escopo global do dashboard) */
+  .eixo-tabs-wrap {
+    position: sticky; top: 0; z-index: 500;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+  }
+  .eixo-tabs-inner { max-width: 1180px; margin: 0 auto; padding: 12px 24px; }
+  .eixo-tabs-label {
+    font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text-2); margin-bottom: 8px;
+  }
+  .eixo-tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+  .eixo-tab {
+    appearance: none; cursor: pointer;
+    border: 1px solid var(--border); background: var(--bg-card);
+    border-radius: 999px; padding: 7px 16px;
+    font-size: 13.5px; font-weight: 600; color: var(--text-2);
+    border-left: 4px solid var(--tab-cor, var(--azul-escuro));
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+  .eixo-tab:hover { background: var(--bg); color: var(--azul-escuro); }
+  .eixo-tab.active {
+    background: var(--tab-cor, var(--azul-escuro)); color: #fff;
+    border-color: var(--tab-cor, var(--azul-escuro));
+  }
+  @media (max-width: 620px) {
+    .eixo-tabs-inner { padding: 10px 16px; }
+    .eixo-tab { padding: 6px 12px; font-size: 12.5px; }
+  }
+
   .map-tabs {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
@@ -997,6 +1030,13 @@ __LEAFLET_CSS_TAG__
 </section>
 
 <!-- ============================================================ ÁREAS TEMÁTICAS -->
+<div class="eixo-tabs-wrap">
+  <div class="eixo-tabs-inner">
+    <div class="eixo-tabs-label">Explorar por eixo</div>
+    <div class="eixo-tabs" id="eixo-tabs"></div>
+  </div>
+</div>
+
 <section id="areas">
   <h2>Áreas temáticas</h2>
   <p class="section-lead">
@@ -1958,6 +1998,37 @@ function renderDistribuicaoFontes() {
   box.innerHTML = items.join(' ');
 }
 
+// -------- Abas de topo por eixo (escopo global) --------
+let currentEixo = '';
+function buildEixoTabs() {
+  const bar = document.getElementById('eixo-tabs');
+  if (!bar) return;
+  const tabs = [['', 'Todos', '']].concat(
+    Object.keys(EIXOS).map(id => [id, EIXOS[id].nome, EIXOS[id].cor])
+  );
+  bar.innerHTML = tabs.map(([id, nome, cor]) =>
+    `<button class="eixo-tab${id === currentEixo ? ' active' : ''}" data-eixo="${id}"` +
+    `${cor ? ` style="--tab-cor:${cor}"` : ''}>${nome}</button>`
+  ).join('');
+  bar.querySelectorAll('.eixo-tab').forEach(b =>
+    b.addEventListener('click', () => setEixo(b.dataset.eixo)));
+}
+function setEixo(id) {
+  currentEixo = id;
+  document.querySelectorAll('.eixo-tab').forEach(b =>
+    b.classList.toggle('active', b.dataset.eixo === id));
+  // Sincroniza todos os selects de eixo dos componentes
+  ['mapa-eixo-pontos', 'mapa-eixo-binario', 'mapa-eixo-uf', 'filtro-eixo', 'contrato-eixo']
+    .forEach(sid => {
+      const sel = document.getElementById(sid);
+      if (sel && sel.value !== id) sel.value = id;
+    });
+  // Re-renderiza as seções dependentes de eixo
+  if (typeof renderMunicipios === 'function') renderMunicipios();
+  if (typeof renderContratos === 'function') renderContratos();
+  if (typeof renderMapa === 'function' && typeof mapInstance !== 'undefined' && mapInstance) renderMapa();
+}
+
 renderDistribuicaoFontes();
 renderEixos();
 popularSelects();
@@ -1965,6 +2036,8 @@ renderMunicipios();
 renderContratos();
 renderTimeline();
 initMap();
+buildEixoTabs();
+setEixo('');
 ["filtro-eixo", "filtro-uf", "filtro-busca"].forEach(id =>
   document.getElementById(id).addEventListener("input", renderMunicipios));
 ["contrato-eixo", "contrato-uf", "contrato-fonte"].forEach(id =>
